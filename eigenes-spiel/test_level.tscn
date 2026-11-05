@@ -1,10 +1,12 @@
 [gd_scene format=3 uid="uid://bwwi46ps3k72m"]
 
+[ext_resource type="Texture2D" uid="uid://bkm0we4jm7hwn" path="res://icon.svg" id="1_1c2mv"]
 [ext_resource type="PackedScene" uid="uid://flpgx6i8k67m" path="res://player.tscn" id="1_gojnm"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_4ptq8"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1c2mv"]
+size = Vector2(640, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_f7g2b"]
 
@@ -14,11 +16,23 @@
 physics_material_override = SubResource("PhysicsMaterial_4ptq8")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=638431101]
+position = Vector2(320, 344)
 shape = SubResource("RectangleShape2D_1c2mv")
+
+[node name="Sprite2D" type="Sprite2D" parent="Ground" unique_id=1530521435]
+texture_repeat = 2
+position = Vector2(320, 344)
+texture = ExtResource("1_1c2mv")
+region_enabled = true
+region_rect = Rect2(0, 0, 640, 32)
 
 [node name="Platform" type="StaticBody2D" parent="." unique_id=229380264]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform" unique_id=1322598023]
+position = Vector2(111, 24)
 shape = SubResource("RectangleShape2D_f7g2b")
 
+[node name="Sprite2D" type="Sprite2D" parent="Platform" unique_id=194104740]
+
 [node name="Player" parent="." unique_id=907890726 instance=ExtResource("1_gojnm")]
+position = Vector2(320, 176)
