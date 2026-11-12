@@ -1,0 +1,59 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_s"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_s")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.05, 0.1, 1)
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -110.0
+offset_top = -80.0
+offset_right = 110.0
+offset_bottom = 80.0
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 28
+text = "RELIC KEEP"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Box"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "Dive deeper. Defend the relics. Die once - lose everything."
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start Run"
+
+[node name="QuitButton" type="Button" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
+
+[node name="BestLabel" type="Label" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1

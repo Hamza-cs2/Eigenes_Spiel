@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Vampire Fang"
+description = "Heal 5% of the damage you deal."
+rarity = 1
+stats = {"lifesteal": 0.05}
+heal = 0

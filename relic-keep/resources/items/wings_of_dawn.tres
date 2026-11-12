@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Wings of Dawn"
+description = "+2 air jumps, +20% move speed."
+rarity = 2
+stats = {"extra_jumps": 2.0, "move_speed": 0.2}
+heal = 0

@@ -1,0 +1,108 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_pl"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player.png" id="2_tex"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hitbox.tscn" id="3_hb"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+[ext_resource type="Texture2D" path="res://assets/sprites/slash.png" id="5_sl"]
+
+[sub_resource type="CapsuleShape2D" id="Body"]
+radius = 5.0
+height = 20.0
+
+[sub_resource type="RectangleShape2D" id="AttackShape"]
+size = Vector2(26, 20)
+
+[sub_resource type="RectangleShape2D" id="SlamShape"]
+size = Vector2(64, 22)
+
+[sub_resource type="RectangleShape2D" id="HurtShape"]
+size = Vector2(10, 18)
+
+[node name="Player" type="CharacterBody2D" groups=["player"]]
+collision_layer = 2
+collision_mask = 193
+floor_snap_length = 4.0
+script = ExtResource("1_pl")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -10)
+shape = SubResource("Body")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -10)
+texture = ExtResource("2_tex")
+
+[node name="AttackPivot" type="Node2D" parent="."]
+
+[node name="Hitbox" parent="AttackPivot" instance=ExtResource("3_hb")]
+collision_layer = 8
+
+[node name="CollisionShape2D" parent="AttackPivot/Hitbox" index="0"]
+position = Vector2(14, -10)
+shape = SubResource("AttackShape")
+
+[node name="Slash" type="Sprite2D" parent="AttackPivot"]
+position = Vector2(14, -10)
+texture = ExtResource("5_sl")
+
+[node name="SlamHitbox" parent="." instance=ExtResource("3_hb")]
+collision_layer = 8
+
+[node name="CollisionShape2D" parent="SlamHitbox" index="0"]
+position = Vector2(0, -9)
+shape = SubResource("SlamShape")
+
+[node name="SlamDust" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 24
+lifetime = 0.5
+one_shot = true
+explosiveness = 1.0
+emission_shape = 3
+emission_rect_extents = Vector2(10, 1)
+direction = Vector2(0, -1)
+spread = 75.0
+gravity = Vector2(0, 350)
+initial_velocity_min = 60.0
+initial_velocity_max = 150.0
+scale_amount_min = 1.0
+scale_amount_max = 2.5
+color = Color(0.8, 0.75, 0.65, 1)
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 16
+rehit_delay = 0.2
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, -10)
+shape = SubResource("HurtShape")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(0, -24)
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="CoyoteTimer" type="Timer" parent="."]
+wait_time = 0.1
+one_shot = true
+
+[node name="JumpBufferTimer" type="Timer" parent="."]
+wait_time = 0.12
+one_shot = true
+
+[node name="DashTimer" type="Timer" parent="."]
+wait_time = 0.15
+one_shot = true
+
+[node name="DashCooldownTimer" type="Timer" parent="."]
+wait_time = 0.6
+one_shot = true
+
+[node name="InvincibleTimer" type="Timer" parent="."]
+wait_time = 0.8
+one_shot = true
+
+[editable path="AttackPivot/Hitbox"]
+[editable path="Hurtbox"]
+[editable path="SlamHitbox"]

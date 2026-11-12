@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Berserker Brand"
+description = "+5 damage, but -10 max HP."
+rarity = 1
+stats = {"damage": 5.0, "max_hp": -10.0}
+heal = 0

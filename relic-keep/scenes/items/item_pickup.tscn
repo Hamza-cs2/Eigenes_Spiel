@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_pickup.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/item.png" id="2_t"]
+[ext_resource type="Texture2D" path="res://assets/sprites/slash.png" id="3_g"]
+
+[sub_resource type="RectangleShape2D" id="Shape"]
+size = Vector2(20, 24)
+
+[node name="ItemPickup" type="Area2D"]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_s")
+
+[node name="Glow" type="Sprite2D" parent="."]
+position = Vector2(0, -12)
+scale = Vector2(1.2, 1.6)
+texture = ExtResource("3_g")
+
+[node name="Icon" type="Sprite2D" parent="."]
+position = Vector2(0, -12)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -12)
+shape = SubResource("Shape")
+
+[node name="Prompt" type="Label" parent="."]
+offset_left = -80.0
+offset_top = -58.0
+offset_right = 80.0
+offset_bottom = -26.0
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 2
+autowrap_mode = 3

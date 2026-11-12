@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/archer_enemy.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/archer.png" id="2_t"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+[ext_resource type="PackedScene" path="res://scenes/combat/arrow.tscn" id="5_ar"]
+
+[sub_resource type="RectangleShape2D" id="Body"]
+size = Vector2(10, 18)
+
+[sub_resource type="RectangleShape2D" id="Hurt"]
+size = Vector2(12, 18)
+
+[node name="Archer" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 193
+script = ExtResource("1_s")
+projectile_scene = ExtResource("5_ar")
+max_hp = 22
+move_speed = 45.0
+attack_damage = 8
+aggro_range = 170.0
+attack_cooldown = 2.0
+vertical_aggro = 90.0
+lose_aggro_range = 300.0
+patrol_radius = 70.0
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -9)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -9)
+shape = SubResource("Body")
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 8
+rehit_delay = 0.1
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, -9)
+shape = SubResource("Hurt")
+
+[node name="Muzzle" type="Marker2D" parent="."]
+position = Vector2(8, -12)
+
+[editable path="Hurtbox"]

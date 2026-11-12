@@ -1,0 +1,72 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/melee_enemy.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/brute.png" id="2_t"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hitbox.tscn" id="3_hb"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+[ext_resource type="Texture2D" path="res://assets/sprites/slash.png" id="5_sl"]
+
+[sub_resource type="RectangleShape2D" id="Body"]
+size = Vector2(20, 26)
+
+[sub_resource type="RectangleShape2D" id="Hurt"]
+size = Vector2(22, 26)
+
+[sub_resource type="RectangleShape2D" id="Attack"]
+size = Vector2(30, 24)
+
+[node name="Brute" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 193
+script = ExtResource("1_s")
+max_hp = 110
+move_speed = 32.0
+attack_damage = 25
+aggro_range = 150.0
+attack_range = 32.0
+attack_cooldown = 2.2
+knockback_resist = 0.85
+interruptible = false
+health_orb_chance = 0.5
+health_bar_offset = -36.0
+windup = 0.85
+attack_active_time = 0.2
+lunge = 160.0
+jump_velocity = -280.0
+vertical_aggro = 80.0
+patrol_radius = 70.0
+patrol_speed_mult = 0.5
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -13.0)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -13.0)
+shape = SubResource("Body")
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 8
+rehit_delay = 0.1
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, -13.0)
+shape = SubResource("Hurt")
+
+[node name="AttackPivot" type="Node2D" parent="."]
+
+[node name="Hitbox" parent="AttackPivot" instance=ExtResource("3_hb")]
+collision_layer = 16
+
+[node name="CollisionShape2D" parent="AttackPivot/Hitbox" index="0"]
+position = Vector2(22.0, -13.0)
+shape = SubResource("Attack")
+
+[node name="Slash" type="Sprite2D" parent="AttackPivot"]
+modulate = Color(1, 0.45, 0.45, 1)
+position = Vector2(22.0, -13.0)
+scale = Vector2(1.25, 1.50)
+texture = ExtResource("5_sl")
+
+[editable path="Hurtbox"]
+[editable path="AttackPivot/Hitbox"]

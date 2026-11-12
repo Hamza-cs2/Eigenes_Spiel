@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/flyer_enemy.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/flyer.png" id="2_t"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hitbox.tscn" id="3_hb"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+
+[sub_resource type="CircleShape2D" id="Body"]
+radius = 5.0
+
+[sub_resource type="CircleShape2D" id="Hurt"]
+radius = 7.0
+
+[sub_resource type="CircleShape2D" id="Contact"]
+radius = 6.0
+
+[node name="Flyer" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_s")
+max_hp = 9
+move_speed = 60.0
+attack_damage = 7
+aggro_range = 140.0
+attack_cooldown = 2.2
+knockback_resist = 0.2
+uses_gravity = false
+health_bar_offset = -14.0
+vertical_aggro = 120.0
+patrol_radius = 60.0
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Body")
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 8
+rehit_delay = 0.1
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+shape = SubResource("Hurt")
+
+[node name="ContactHitbox" parent="." instance=ExtResource("3_hb")]
+collision_layer = 16
+start_active = true
+once_per_activation = false
+knockback = 120.0
+
+[node name="CollisionShape2D" parent="ContactHitbox" index="0"]
+shape = SubResource("Contact")
+
+[editable path="Hurtbox"]
+[editable path="ContactHitbox"]

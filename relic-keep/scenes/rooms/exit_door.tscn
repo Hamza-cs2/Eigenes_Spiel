@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/rooms/exit_door.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/door.png" id="2_t"]
+
+[sub_resource type="RectangleShape2D" id="Shape"]
+size = Vector2(20, 32)
+
+[node name="ExitDoor" type="Area2D"]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_s")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -16)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -16)
+shape = SubResource("Shape")
+
+[node name="Prompt" type="Label" parent="."]
+offset_left = -70.0
+offset_top = -52.0
+offset_right = 70.0
+offset_bottom = -36.0
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1

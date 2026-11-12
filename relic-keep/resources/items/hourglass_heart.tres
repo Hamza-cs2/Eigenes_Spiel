@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Hourglass Heart"
+description = "+35% attack speed, dash recharges 40% faster."
+rarity = 2
+stats = {"attack_speed": 0.35, "dash_cooldown": -0.4}
+heal = 0

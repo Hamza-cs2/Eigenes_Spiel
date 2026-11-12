@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/build_room_templates.gd" id="1_s"]
+
+[node name="BuildRoomTemplates" type="Node"]
+script = ExtResource("1_s")

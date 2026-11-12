@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/items/health_orb.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/health_orb.png" id="2_t"]
+
+[sub_resource type="CircleShape2D" id="Shape"]
+radius = 7.0
+
+[node name="HealthOrb" type="Area2D"]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_s")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape")

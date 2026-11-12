@@ -1,0 +1,66 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/rooms/defense_relic.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/pedestal.png" id="2_p"]
+[ext_resource type="Texture2D" path="res://assets/sprites/relic.png" id="3_r"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+
+[sub_resource type="RectangleShape2D" id="Hurt"]
+size = Vector2(22, 34)
+
+[sub_resource type="RectangleShape2D" id="Interact"]
+size = Vector2(48, 32)
+
+[node name="DefenseRelic" type="Node2D"]
+script = ExtResource("1_s")
+
+[node name="Pedestal" type="Sprite2D" parent="."]
+position = Vector2(0, -4)
+texture = ExtResource("2_p")
+
+[node name="Crystal" type="Sprite2D" parent="."]
+position = Vector2(0, -22)
+texture = ExtResource("3_r")
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 16
+rehit_delay = 0.5
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, -17)
+shape = SubResource("Hurt")
+
+[node name="InteractArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+position = Vector2(0, -16)
+shape = SubResource("Interact")
+
+[node name="Prompt" type="Label" parent="."]
+offset_left = -80.0
+offset_top = -76.0
+offset_right = 80.0
+offset_bottom = -50.0
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="Shatter" type="CPUParticles2D" parent="."]
+position = Vector2(0, -22)
+emitting = false
+amount = 30
+lifetime = 0.9
+one_shot = true
+explosiveness = 1.0
+direction = Vector2(0, -1)
+spread = 180.0
+gravity = Vector2(0, 400)
+initial_velocity_min = 60.0
+initial_velocity_max = 160.0
+scale_amount_min = 2.0
+scale_amount_max = 3.0
+color = Color(0.5, 0.9, 1, 1)
+
+[editable path="Hurtbox"]

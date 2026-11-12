@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Storm Sigil"
+description = "Dash recharges 30% faster, +8% move speed."
+rarity = 1
+stats = {"dash_cooldown": -0.3, "move_speed": 0.08}
+heal = 0

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_name = "Bloodstone"
+description = "Heal 12% of damage dealt, +4 damage."
+rarity = 2
+stats = {"lifesteal": 0.12, "damage": 4.0}
+heal = 0

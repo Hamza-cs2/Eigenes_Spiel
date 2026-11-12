@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/run/run.gd" id="1_s"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_pl"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="4_pm"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map_screen.tscn" id="5_map"]
+
+[node name="Run" type="Node2D"]
+script = ExtResource("1_s")
+
+[node name="LevelHolder" type="Node2D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("2_pl")]
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("4_pm")]
+
+[node name="MapScreen" parent="." instance=ExtResource("5_map")]
