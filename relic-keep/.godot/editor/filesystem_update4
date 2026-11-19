@@ -19,3 +19,7 @@ res://scenes/ui/pause_menu.tscn
 res://scripts/items/item_pickup.gd
 res://scripts/items/shop_pedestal.gd
 res://scripts/ui/pause_menu.gd
+res://scenes/run/run.tscn
+res://scripts/items/upgrade_scroll.gd
+res://scenes/main/main.tscn
+res://assets/tiles/tileset.tres
