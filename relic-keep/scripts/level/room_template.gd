@@ -13,10 +13,12 @@ extends Node2D
 ##   PlayerSpawn  (Marker2D)  START rooms only
 ##   LevelExit    (Marker2D)  END rooms only  (door to the next region)
 ##   RelicSpawn   (Marker2D)  DEFENSE rooms only (use defense_room.gd as script)
+##   ShopSlots + Merchant      SHOP rooms only (use shop_room.gd as script)
+##   BossSpawn    (Marker2D)  MINIBOSS / BOSS rooms only (use boss_arena.gd as script)
 
 signal message(text: String)
 
-enum RoomType { NORMAL, START, END, DEFENSE, BRANCH }
+enum RoomType { NORMAL, START, END, DEFENSE, BRANCH, SHOP, MINIBOSS, BOSS }
 
 const TILE := 16
 const ENEMY_SCENES := {
@@ -50,6 +52,13 @@ var origin_tiles := Vector2i.ZERO
 var enemies_root: Node2D
 ## Has the player been in this room? (for the map)
 var visited := false
+## Set by the level: a key lies in this room, guarded by extra enemies.
+var guarded_key := false
+## Set by the level: this is a locked treasure room (better loot behind a LockedGate).
+var vault := false
+var gate: LockedGate
+
+var _used_spawns: Array[Marker2D] = []
 
 var _map_image: Image
 
@@ -115,13 +124,13 @@ func enemy_count() -> int:
 	if max_enemies >= 0:
 		return max_enemies
 	match room_type:
-		RoomType.START, RoomType.DEFENSE:
+		RoomType.START, RoomType.DEFENSE, RoomType.SHOP, RoomType.MINIBOSS, RoomType.BOSS:
 			return 0
 		RoomType.BRANCH:
-			return rng.randi_range(0, 1)
+			return 0 if vault else rng.randi_range(0, 2)
 		RoomType.END:
-			return rng.randi_range(1, 1 + level_index / 2)
-	return rng.randi_range(1 + level_index / 2, 2 + level_index)
+			return rng.randi_range(2, 2 + level_index / 2)
+	return rng.randi_range(2 + level_index / 2, 4 + level_index)
 
 
 func _spawn_enemies() -> void:
@@ -137,14 +146,46 @@ func _spawn_enemies() -> void:
 		var kind := "flyer" if sp is EnemySpawn and sp.kind == EnemySpawn.Kind.AIR else pick_ground_kind()
 		spawn_enemy(kind, sp.position)
 		used.append(sp.position)
+		_used_spawns.append(sp)
+	if guarded_key:
+		_spawn_guarded_key()
+
+
+## Puts a key on a free ground spawn point and 2 extra enemies next to it (nearest free spawn points).
+func _spawn_guarded_key() -> void:
+	var ground := get_markers("EnemySpawns").filter(func(m: Marker2D) -> bool:
+		return not (m is EnemySpawn and m.kind == EnemySpawn.Kind.AIR))
+	var free := ground.filter(func(m: Marker2D) -> bool: return not m in _used_spawns)
+	if free.is_empty():
+		free = ground
+	if free.is_empty():
+		return
+	var spot: Marker2D = free[rng.randi_range(0, free.size() - 1)]
+	var key := LootPickup.spawn_key(self, spot.position + Vector2(0, -10))
+	key.linear_velocity = Vector2.ZERO
+	var others := ground.filter(func(m: Marker2D) -> bool: return m != spot and not m in _used_spawns)
+	others.sort_custom(func(a: Marker2D, b: Marker2D) -> bool:
+		return a.position.distance_to(spot.position) < b.position.distance_to(spot.position))
+	var guards := 0
+	for m in others:
+		if guards >= 2:
+			break
+		var e := spawn_enemy(pick_ground_kind(), m.position)
+		e.max_hp = roundi(e.max_hp * 1.5)
+		e.hp = e.max_hp
+		e.modulate = Color(1.3, 1.1, 0.7)
+		_used_spawns.append(m)
+		guards += 1
+	if guards < 2:
+		spawn_enemy("flyer", spot.position + Vector2(0, -48))
 
 
 func pick_ground_kind() -> String:
 	var pool := ["walker", "walker", "walker", "archer", "archer"]
-	if level_index >= 3:
+	if level_index >= 2:
 		pool.append("brute")
-	if level_index >= 5:
-		pool.append_array(["brute", "archer"])
+	if level_index >= 4:
+		pool.append_array(["brute", "archer", "walker"])
 	return pool[rng.randi_range(0, pool.size() - 1)]
 
 
@@ -165,8 +206,17 @@ func alive_enemies() -> int:
 
 
 func _spawn_items() -> void:
+	var markers := get_markers("ItemSpawns")
+	if vault:
+		# Locked treasure room: rare or legendary items + a pile of coins.
+		for sp in markers:
+			var rarity := ItemData.Rarity.LEGENDARY if rng.randf() < 0.25 else ItemData.Rarity.RARE
+			spawn_item(GameState.roll_item(rarity), sp.position)
+		if not markers.is_empty():
+			LootPickup.spawn_coins(self, markers[0].position + Vector2(0, -12), rng.randi_range(30, 60) + 10 * level_index)
+		return
 	var chance := 1.0 if room_type == RoomType.BRANCH else item_chance
-	for sp in get_markers("ItemSpawns"):
+	for sp in markers:
 		if rng.randf() < chance:
 			spawn_item(GameState.roll_room_reward(), sp.position)
 

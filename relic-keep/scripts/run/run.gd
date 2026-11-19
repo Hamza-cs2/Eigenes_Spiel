@@ -30,7 +30,8 @@ func _build_next_level() -> void:
 		level_holder.remove_child(level)
 		level.queue_free()
 	GameState.depth += 1
-	var with_defense := GameState.should_spawn_defense()
+	var boss_stage := GameState.depth % Level.BOSS_EVERY == 0
+	var with_defense := not boss_stage and GameState.should_spawn_defense()
 	level = LEVEL_SCRIPT.new()
 	level.name = "Level"
 	level_holder.add_child(level)
@@ -41,15 +42,22 @@ func _build_next_level() -> void:
 	level.defense_started.connect(hud.show_defense)
 	level.wave_changed.connect(hud.set_wave)
 	level.defense_finished.connect(func(_ok: bool) -> void: hud.hide_defense(3.0))
+	level.boss_started.connect(hud.show_boss)
 	hud.hide_defense()
-	level.build(GameState.rng, GameState.depth, next_region, with_defense)
+	hud.hide_boss()
+	level.build(GameState.rng, GameState.depth, next_region, with_defense, boss_stage)
 	if level.has_defense:
 		GameState.levels_since_defense = 0
 	else:
 		GameState.levels_since_defense += 1
 	player.teleport(level.player_spawn, level.bounds)
-	hud.set_level(GameState.depth, level.region.name)
-	hud.show_toast("Level %d - %s" % [GameState.depth, level.region.name], 2.0)
+	var title: String = level.region.name + (" - Boss" if boss_stage else "")
+	hud.set_level(GameState.depth, title)
+	if boss_stage:
+		GameState.heal_player(GameState.get_max_hp())
+		hud.show_toast("Level %d - %s. You rest before the fight (healed). A merchant waits ahead." % [GameState.depth, title], 3.5)
+	else:
+		hud.show_toast("Level %d - %s" % [GameState.depth, title], 2.0)
 
 
 func _go_to_next_level(region_index := -1) -> void:

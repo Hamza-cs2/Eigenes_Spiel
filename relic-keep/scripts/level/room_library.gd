@@ -78,4 +78,18 @@ static func _validate(room: RoomTemplate) -> Array[String]:
 		RoomTemplate.RoomType.DEFENSE:
 			if not room is DefenseRoom:
 				out.append("DEFENSE room needs the defense_room.gd script on the root.")
+		RoomTemplate.RoomType.SHOP:
+			if not room is ShopRoom:
+				out.append("SHOP room needs the shop_room.gd script on the root.")
+			if room.get_node_or_null("ShopSlots") == null:
+				out.append("SHOP room needs a 'ShopSlots' node with Marker2Ds.")
+		RoomTemplate.RoomType.MINIBOSS, RoomTemplate.RoomType.BOSS:
+			if not room is BossArena:
+				out.append("MINIBOSS/BOSS room needs the boss_arena.gd script on the root.")
+			elif room.boss_scene == null:
+				out.append("MINIBOSS/BOSS room needs boss_scene set in the Inspector.")
+			if room.get_node_or_null("BossSpawn") == null:
+				out.append("MINIBOSS/BOSS room needs a Marker2D called 'BossSpawn'.")
+			if room.room_type == RoomTemplate.RoomType.BOSS and room.get_node_or_null("LevelExit") == null:
+				out.append("BOSS room needs a Marker2D called 'LevelExit'.")
 	return out

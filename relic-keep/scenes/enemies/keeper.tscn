@@ -1,0 +1,89 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/boss_enemy.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/keeper.png" id="2_t"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hitbox.tscn" id="3_hb"]
+[ext_resource type="PackedScene" path="res://scenes/combat/hurtbox.tscn" id="4_hu"]
+[ext_resource type="Texture2D" path="res://assets/sprites/slash.png" id="5_sl"]
+[ext_resource type="PackedScene" path="res://scenes/combat/arrow.tscn" id="6_ar"]
+[ext_resource type="PackedScene" path="res://scenes/combat/shockwave.tscn" id="7_sw"]
+
+[sub_resource type="RectangleShape2D" id="Body"]
+size = Vector2(36, 48)
+
+[sub_resource type="RectangleShape2D" id="Hurt"]
+size = Vector2(40, 48)
+
+[sub_resource type="RectangleShape2D" id="Attack"]
+size = Vector2(52, 36)
+
+[sub_resource type="RectangleShape2D" id="Contact"]
+size = Vector2(44, 48)
+
+[node name="Keeper" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 193
+script = ExtResource("1_s")
+projectile_scene = ExtResource("6_ar")
+shockwave_scene = ExtResource("7_sw")
+max_hp = 900
+move_speed = 60.0
+attack_damage = 22
+aggro_range = 600.0
+lose_aggro_range = 9999.0
+knockback_resist = 1.0
+interruptible = false
+health_orb_chance = 0.0
+health_bar_offset = -58.0
+coin_drop = Vector2i(150, 200)
+key_drop_chance = 0.0
+boss_title = "The Keeper of Relics"
+attacks = PackedStringArray("slash", "charge", "slam", "volley", "summon")
+attack_pause = 0.9
+slash_range = 52.0
+summon_kinds = PackedStringArray("walker", "flyer")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -24.0)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -24.0)
+shape = SubResource("Body")
+
+[node name="Hurtbox" parent="." instance=ExtResource("4_hu")]
+collision_mask = 8
+rehit_delay = 0.1
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, -24.0)
+shape = SubResource("Hurt")
+
+[node name="AttackPivot" type="Node2D" parent="."]
+
+[node name="Hitbox" parent="AttackPivot" instance=ExtResource("3_hb")]
+collision_layer = 16
+
+[node name="CollisionShape2D" parent="AttackPivot/Hitbox" index="0"]
+position = Vector2(40.0, -24.0)
+shape = SubResource("Attack")
+
+[node name="Slash" type="Sprite2D" parent="AttackPivot"]
+modulate = Color(1, 0.4, 0.4, 1)
+position = Vector2(40.0, -24.0)
+scale = Vector2(2.17, 2.25)
+texture = ExtResource("5_sl")
+
+[node name="BodyHitbox" parent="." instance=ExtResource("3_hb")]
+collision_layer = 16
+
+[node name="CollisionShape2D" parent="BodyHitbox" index="0"]
+position = Vector2(0, -24.0)
+shape = SubResource("Contact")
+
+[node name="Muzzle" type="Marker2D" parent="."]
+position = Vector2(20.0, -28.0)
+
+[editable path="Hurtbox"]
+[editable path="AttackPivot/Hitbox"]
+[editable path="BodyHitbox"]

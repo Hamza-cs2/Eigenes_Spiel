@@ -35,5 +35,8 @@ func _process(delta: float) -> void:
 	icon.position.y = -12.0 + sin(_time * 3.0) * 2.0
 	glow.rotation += delta
 	if _player_inside and Input.is_action_just_pressed("interact"):
-		GameState.add_item(item)
-		queue_free()
+		if GameState.add_item(item):
+			queue_free()
+		else:
+			prompt.text = "Relics + backpack full!\nPress Esc and drop one first."
+

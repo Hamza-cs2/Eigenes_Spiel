@@ -59,7 +59,16 @@ func _draw_map() -> void:
 		if not _textures.has(room):
 			_textures[room] = ImageTexture.create_from_image(room.get_map_image())
 		var rect := Rect2(to_map.call(room.position), Vector2(room.size_tiles) * scale)
-		var tint := Color(1.4, 0.6, 1.2) if room is DefenseRoom else Color.WHITE
+		var tint := Color.WHITE
+		match room.room_type:
+			RoomTemplate.RoomType.DEFENSE:
+				tint = Color(1.4, 0.6, 1.2)
+			RoomTemplate.RoomType.SHOP:
+				tint = Color(0.6, 1.5, 0.7)
+			RoomTemplate.RoomType.MINIBOSS, RoomTemplate.RoomType.BOSS:
+				tint = Color(1.6, 0.5, 0.5)
+		if room.vault and is_instance_valid(room.gate):
+			tint = Color(1.6, 1.3, 0.4)
 		view.draw_texture_rect(_textures[room], rect, false, tint)
 
 	var font := ThemeDB.fallback_font
@@ -69,7 +78,8 @@ func _draw_map() -> void:
 			continue
 		var p: Vector2 = to_map.call(ex.position)
 		view.draw_rect(Rect2(p - Vector2(3, 6), Vector2(6, 6)), Color(1, 0.85, 0.2))
-		view.draw_string(font, p + Vector2(-40, -9), ex.region, HORIZONTAL_ALIGNMENT_CENTER, 80, 8, Color(1, 0.9, 0.5))
+		var label_x := clampf(p.x - 40.0, MAP_AREA.position.x, MAP_AREA.end.x - 80.0)
+		view.draw_string(font, Vector2(label_x, p.y - 9), ex.region, HORIZONTAL_ALIGNMENT_CENTER, 80, 8, Color(1, 0.9, 0.5))
 
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if player and fmod(_time, 0.6) < 0.4:

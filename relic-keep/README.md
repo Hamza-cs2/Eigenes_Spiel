@@ -15,7 +15,7 @@ Made for **Godot 4.7.2**. Open `project.godot` and press **F5** (Play Project).
 | Move | A/D or arrows | Left stick |
 | Jump (hold = higher) | Space / W / Up | A |
 | Drop through a platform / ledge | S + Jump | Down + A |
-| Ground slam (in the air) | tap S / Down | stick down |
+| Ground slam (when high enough above the ground) | tap S / Down | stick down |
 | Map | M / Tab | LB |
 | Dash (invincible) | Shift / L | B |
 | Attack (3-hit combo, each hit goes where you hold) | J / left mouse | X |
@@ -26,7 +26,7 @@ Made for **Godot 4.7.2**. Open `project.godot` and press **F5** (Play Project).
 ## Features
 
 - **Display:** starts in fullscreen. The 640x360 pixel-art image is scaled up in whole steps (3x on a 1080p screen) so pixels stay sharp.
-- **Player:** acceleration, variable jump height, coyote time, jump buffer, air jumps (from items), dash with i-frames, 3-hit combo that follows your direction keys, ground slam (tap down in the air: you fall through platforms but land on ledges and ground, can't be hit while falling, then a shockwave deals 2x damage), drop through platforms and ledges
+- **Player:** acceleration, variable jump height, coyote time, jump buffer, air jumps (from items), dash with i-frames, 3-hit combo that follows your direction keys with a bit of **aim assist** (swings shift up/down toward an enemy slightly above or below you, and turn around for an enemy right behind you if you aren't holding a direction), ground slam (tap down when you're **at least 4.5 tiles (72 px) above the ground or ledge below you**. A normal jump only reaches ~60 px, so it works when jumping/falling off ledges but not when hopping on flat ground. Tune it with `SLAM_MIN_HEIGHT` in `player.gd`. You fall through platforms but land on ledges and ground, can't be hit while falling, **hit every enemy you fall through**, then a shockwave deals 2x damage), drop through platforms and ledges
 - **Seamless levels:** no loading or teleporting inside a level. Only the exit doors fade to the next region (6 regions with their own colors). Each exit is labelled with the region it leads to.
 - **Level layout:** like Dead Cells' maps, about 20–32 rooms:
   1. The map grows outwards from random rooms, so it branches in all directions.
@@ -34,6 +34,16 @@ Made for **Godot 4.7.2**. Open `project.godot` and press **F5** (Play Project).
   3. The **2 exits** are placed far from the start and from each other.
   4. 2–3 treasure side rooms are added, plus sometimes a relic room in the middle.
   5. At most 3 rooms are stacked vertically, and **ledges** between stacked rooms stop the slam, so you can't fall through the whole level.
+- **Coins:** enemies drop coins that fly to you; bigger enemies drop more. Lost on death.
+- **Merchants:** one shop per level (and right before every boss). It sells 3 items: common, common/rare, and rare/legendary. Prices go up on later levels. The shop is built so weapons can be added later (`ShopPedestal._give()`).
+- **Keys & locked rooms:** most treasure side rooms are locked behind bars. Open them with a **key** or by **paying coins**; inside are rare/legendary items and a coin pile. For every key-locked room there's a key lying somewhere in the level, **guarded by tougher enemies**. Keys also drop rarely from enemies (Brutes and mini bosses drop them more often).
+- **Mini bosses:** every level has a mini boss arena. Walk in and the doors close. **The Warden** slashes and charges, and drops coins, a key and a rare item.
+- **Boss stages:** every 3rd level (3, 6, 9...) is a boss stage: start → 2 rooms → merchant → arena. You're healed when it starts.
+  - **The Keeper of Relics** slashes, charges, jump-slams (shockwaves along the floor: jump over them!) and fires arrow volleys.
+  - Below half HP it gets faster and summons helpers.
+  - The exit stays sealed until it's dead. It drops a legendary item.
+- **More enemies:** about 5 per normal room, and Brutes from level 2.
+- **Harder maps:** smaller, winding rooms (zigzag, chimney, pillars, crossroads, gallery, cramped), fewer loops, about 30–38 rooms per level.
 - **Map (M / Tab):** shows explored rooms (they get revealed as you go), where you are, the exits and the relic room.
 - **Enemies (Dead-Cells style):**
   - They patrol around their spawn point, turn at walls and ledges, and stop now and then.
@@ -86,8 +96,21 @@ MyRoom (Node2D, script: scripts/level/room_template.gd)   ← DEFENSE rooms: scr
 │  └─ Item0, ...               (Marker2D + script scripts/level/item_spawn.gd)
 ├─ PlayerSpawn  (Marker2D)   START rooms only
 ├─ LevelExit    (Marker2D)   END rooms only (the exit door goes here)
-└─ RelicSpawn   (Marker2D)   DEFENSE rooms only
+├─ RelicSpawn   (Marker2D)   DEFENSE rooms only
+├─ ShopSlots    (Node2D with Marker2Ds on the floor) + Merchant (Marker2D)   SHOP rooms only
+└─ BossSpawn    (Marker2D)   MINIBOSS / BOSS rooms only (BOSS also needs LevelExit)
 ```
+
+**Root script per room type:**
+
+| Room type | Script |
+|---|---|
+| NORMAL, START, END, BRANCH | `scripts/level/room_template.gd` |
+| DEFENSE | `scripts/rooms/defense_room.gd` |
+| SHOP | `scripts/rooms/shop_room.gd` |
+| MINIBOSS, BOSS | `scripts/rooms/boss_arena.gd`, with **Boss Scene** set to `warden.tscn` / `keeper.tscn` (or your own boss) |
+
+BRANCH rooms become locked treasure rooms automatically; you don't need to add the gate yourself.
 
 ### Inspector settings on the root
 - **Size Tiles:** size in tiles, including the border. The blue box in the editor shows it.
@@ -143,7 +166,8 @@ Player (CharacterBody2D, player.gd, group "player", Layer 2, Mask 1+7)
 ├─ AttackPivot (Node2D)           ← scale.x follows the facing direction
 │  ├─ Hitbox (hitbox.tscn, Layer 4) → Rect 26x20 at (14,-10)
 │  └─ Slash (Sprite2D)
-├─ SlamHitbox (hitbox.tscn, Layer 4) → Rect 64x22 at (0,-9)
+├─ SlamHitbox (hitbox.tscn, Layer 4) → Rect 64x22 at (0,-9)        ← landing shockwave
+├─ SlamFallHitbox (hitbox.tscn, Layer 4) → Rect 20x26 at (0,-8)    ← active while slamming down
 ├─ SlamDust (CPUParticles2D, One Shot)
 ├─ Hurtbox (hurtbox.tscn, Mask 5) → Rect 10x18 at (0,-10)
 ├─ Camera2D (pos (0,-24), smoothing)
@@ -159,7 +183,21 @@ Player (CharacterBody2D, player.gd, group "player", Layer 2, Mask 1+7)
 **Hitbox / Hurtbox** (`scenes/combat/`): reusable Area2D scenes. Instance them, turn on **Editable Children**, and give the CollisionShape2D a shape.
 **Run** `scenes/run/run.tscn`: Node2D → LevelHolder, Player, HUD, PauseMenu. The level is built by `level.gd`.
 
+**Tuning the aim assist / slam:** constants at the top of `scripts/player/player.gd`:
+`AIM_ASSIST_RANGE_X`, `AIM_ASSIST_UP`, `AIM_ASSIST_DOWN`, `AIM_MAX_UP`, `AIM_MAX_DOWN`, `AIM_TURN_RANGE`,
+`SLAM_FALL_DAMAGE_MULT`, `SLAM_DAMAGE_MULT`.
+
 ## Tools
 - **Automated test:** `godot --headless --path . --fixed-fps 60 res://tools/test_runner.tscn`
 - **Rebuild the starter rooms** from `tools/room_layouts.json`: `godot --headless --path . res://tools/build_room_templates.tscn` (this overwrites the starter templates, but not your own rooms)
+- **Enemy loot:** every enemy has **Coin Drop** (min/max) and **Key Drop Chance** in the Inspector (Loot group).
+- **Bosses** (`scenes/enemies/warden.tscn`, `keeper.tscn`, script `boss_enemy.gd`):
+  ```
+  Boss (CharacterBody2D, Layer 3, Mask 1+7+8)
+  ├─ Sprite, CollisionShape2D, Hurtbox (Mask 4)
+  ├─ AttackPivot/Hitbox (Layer 5) + AttackPivot/Slash      ← slash attack
+  ├─ BodyHitbox (hitbox.tscn, Layer 5)                     ← charge / slam landing
+  └─ Muzzle (Marker2D)                                     ← arrow volley
+  ```
+  In the Inspector, pick the **Attacks** (`slash`, `charge`, `slam`, `volley`, `summon`), **Summon Kinds**, **Phase 2 Ratio**, **Attack Pause**, and the projectile/shockwave scenes.
 - **Rebuild the TileSet:** `godot --headless --path . -s res://tools/build_tileset.gd`

@@ -7,7 +7,10 @@ extends Node2D
 ##     to line up with two exits) -> circular routes like in Dead Cells.
 ##  3. A relic (DEFENSE) room somewhere in the middle (if wanted).
 ##  4. 2 EXITS (END rooms) as far from the start as possible, each leading to a different region.
-##  5. Treasure side rooms (BRANCH) on leftover free exits.
+##  5. A merchant (SHOP) and a mini boss arena (MINIBOSS).
+##  6. Treasure side rooms (BRANCH); most are LOCKED (key or coins). Every key-locked room gets a
+##     key somewhere else in the level, guarded by extra enemies.
+## Every BOSS_EVERY levels there's a boss stage instead: START -> 2 rooms -> SHOP -> BOSS arena.
 ## Tall vertical stacks are limited (MAX_VERTICAL_GROUP). Unused exits get walled up.
 
 signal message(text: String)
@@ -16,6 +19,7 @@ signal level_exit_entered(region_index: int)
 signal defense_started(relic: DefenseRelic)
 signal wave_changed(wave: int, total: int)
 signal defense_finished(success: bool)
+signal boss_started(boss: Enemy, title: String)
 
 const TILE := 16
 const EXIT_DOOR := preload("res://scenes/rooms/exit_door.tscn")
@@ -23,6 +27,12 @@ const TILESET := preload("res://assets/tiles/tileset.tres")
 ## Corridors that close loops: max length in tiles, max height difference in tiles.
 const MAX_CONNECTOR_LENGTH := 70
 const MAX_CONNECTOR_RISE := 6
+const GATE_SCENE := preload("res://scenes/rooms/locked_gate.tscn")
+const SCROLL_SCENE := preload("res://scenes/items/upgrade_scroll.tscn")
+## Every Nth level is a boss stage.
+const BOSS_EVERY := 3
+## Chance that a treasure side room is locked.
+const VAULT_CHANCE := 0.7
 const MAX_ATTEMPTS := 60
 ## Max rooms connected to each other only by up/down exits (one vertical "column").
 const MAX_VERTICAL_GROUP := 3
@@ -44,6 +54,7 @@ var rooms: Array[RoomTemplate] = []
 var bounds := Rect2()
 var player_spawn := Vector2.ZERO
 var has_defense := false
+var boss_stage := false
 ## Info for the map: [{position: Vector2, region: String}]
 var exit_markers: Array[Dictionary] = []
 var loops := 0
@@ -53,15 +64,19 @@ var _current_room: RoomTemplate
 
 
 ## Builds the whole level.
-func build(rng: RandomNumberGenerator, p_level: int, p_region: int, with_defense: bool) -> void:
+func build(rng: RandomNumberGenerator, p_level: int, p_region: int, with_defense: bool, p_boss_stage := false) -> void:
 	_rng = rng
+	boss_stage = p_boss_stage
 	level_index = p_level
 	region_index = p_region
 	region = REGIONS[region_index]
 	var templates := RoomLibrary.get_templates()
 	var plan: Array = []
 	for attempt in MAX_ATTEMPTS:
-		plan = _plan(templates, with_defense and attempt < MAX_ATTEMPTS / 2)
+		if boss_stage:
+			plan = _plan_boss(templates)
+		else:
+			plan = _plan(templates, with_defense and attempt < MAX_ATTEMPTS / 2, attempt < MAX_ATTEMPTS / 2)
 		if not plan.is_empty():
 			break
 	assert(not plan.is_empty(), "Could not build a level - check the room templates (need START, END and NORMAL rooms with matching exits).")
@@ -86,7 +101,22 @@ func _physics_process(_delta: float) -> void:
 # entry = {meta, origin: Vector2i, used: {exit_index: true}, dist: int, vgroup: Array (shared by
 #          all rooms joined by up/down exits)}
 
-func _plan(templates: Array[Dictionary], with_defense: bool) -> Array:
+## Boss stage: a short way to the arena with a merchant right before it.
+func _plan_boss(templates: Array[Dictionary]) -> Array:
+	var placed: Array = []
+	loops = 0
+	var starts := _filter(templates, RoomTemplate.RoomType.START)
+	if starts.is_empty():
+		return []
+	var current := _add_entry(placed, _weighted_pick(starts), Vector2i.ZERO, -1, [], {})
+	for type in [RoomTemplate.RoomType.NORMAL, RoomTemplate.RoomType.NORMAL, RoomTemplate.RoomType.SHOP, RoomTemplate.RoomType.BOSS]:
+		current = _attach(placed, current, _filter(templates, type))
+		if current.is_empty():
+			return []
+	return placed
+
+
+func _plan(templates: Array[Dictionary], with_defense: bool, strict := true) -> Array:
 	var placed: Array = []
 	loops = 0
 	var starts := _filter(templates, RoomTemplate.RoomType.START)
@@ -96,7 +126,7 @@ func _plan(templates: Array[Dictionary], with_defense: bool) -> Array:
 	_add_entry(placed, _weighted_pick(starts), Vector2i.ZERO, -1, [], {})
 
 	# 1. Grow outwards from random rooms.
-	var target := _rng.randi_range(13, 16) + mini(level_index, 4) * 2
+	var target := _rng.randi_range(18, 22) + mini(level_index, 4) * 2
 	var fails := 0
 	while placed.size() < target and fails < 300:
 		var hosts := placed.filter(func(e: Dictionary) -> bool: return _free_exits(e).size() > 0)
@@ -107,7 +137,7 @@ func _plan(templates: Array[Dictionary], with_defense: bool) -> Array:
 			fails += 1
 
 	# 2. Loops: rooms that connect two dead ends. Try every room with free exits.
-	var want_loops := _rng.randi_range(2, 4)
+	var want_loops := _rng.randi_range(1, 2)
 	for pass_i in 3:
 		var hosts := placed.filter(func(e: Dictionary) -> bool: return _free_exits(e).size() > 0)
 		_shuffle(hosts)
@@ -125,6 +155,16 @@ func _plan(templates: Array[Dictionary], with_defense: bool) -> Array:
 			return e.dist >= max_dist / 3 and e.dist <= max_dist * 2 / 3 + 1)
 		if not _attach_to_any(placed, mids, _filter(templates, RoomTemplate.RoomType.DEFENSE)):
 			return []
+
+	# Merchant somewhere in the middle, mini boss further out.
+	var max_d := _max_dist(placed)
+	var normal_hosts := func(min_d: int, max_dd: int) -> Array:
+		return placed.filter(func(e: Dictionary) -> bool:
+			return e.meta.type == RoomTemplate.RoomType.NORMAL and e.dist >= min_d and e.dist <= max_dd)
+	var shop_ok := _attach_to_any(placed, _shuffled(normal_hosts.call(max_d / 4, max_d * 3 / 4 + 1)), _filter(templates, RoomTemplate.RoomType.SHOP))
+	var boss_ok := _attach_to_any(placed, _shuffled(normal_hosts.call(max_d * 2 / 5, max_d)), _filter(templates, RoomTemplate.RoomType.MINIBOSS))
+	if strict and not (shop_ok and boss_ok):
+		return []
 
 	# 4. Two exits, as far away from the start as possible (and from each other).
 	var ends := _filter(templates, RoomTemplate.RoomType.END)
@@ -144,19 +184,40 @@ func _plan(templates: Array[Dictionary], with_defense: bool) -> Array:
 	if end_count == 0:
 		return []
 
-	# 5. Treasure side rooms.
+	# 5. Treasure side rooms, most of them locked.
 	var branches := _filter(templates, RoomTemplate.RoomType.BRANCH)
-	var want_branches := _rng.randi_range(2, 3)
-	for i in 30:
+	var want_branches := _rng.randi_range(3, 4)
+	var key_locks := 0
+	for i in 40:
 		if want_branches <= 0:
 			break
 		var hosts := placed.filter(func(e: Dictionary) -> bool:
 			return e.meta.type == RoomTemplate.RoomType.NORMAL and _free_exits(e).size() > 0)
 		if hosts.is_empty():
 			break
-		if not _attach(placed, hosts[_rng.randi_range(0, hosts.size() - 1)], branches).is_empty():
-			want_branches -= 1
+		var vault := _attach(placed, hosts[_rng.randi_range(0, hosts.size() - 1)], branches)
+		if vault.is_empty():
+			continue
+		want_branches -= 1
+		if _rng.randf() < VAULT_CHANCE:
+			vault.lock = LockedGate.LockType.KEY if _rng.randf() < 0.5 else LockedGate.LockType.COINS
+			if vault.lock == LockedGate.LockType.KEY:
+				key_locks += 1
+
+	# 6. One guarded key per key-locked room (sometimes one extra).
+	if key_locks > 0 and _rng.randf() < 0.4:
+		key_locks += 1
+	var key_hosts := _shuffled(placed.filter(func(e: Dictionary) -> bool:
+		return e.meta.type == RoomTemplate.RoomType.NORMAL and not e.meta.has("connector") and e.dist >= 1))
+	for i in mini(key_locks, key_hosts.size()):
+		key_hosts[i].guard_key = true
 	return placed
+
+
+func _shuffled(arr: Array) -> Array:
+	var copy := arr.duplicate()
+	_shuffle(copy)
+	return copy
 
 
 ## Finds RIGHT/LEFT exit pairs that face each other with nothing in between and joins them
@@ -345,6 +406,12 @@ func _instantiate(plan: Array) -> void:
 		rooms.append(room)
 		bounds = room.get_rect_px() if bounds.size == Vector2.ZERO else bounds.merge(room.get_rect_px())
 		room.message.connect(message.emit)
+		room.guarded_key = entry.get("guard_key", false)
+		if entry.has("lock"):
+			room.vault = true
+			_add_gate(room, entry)
+		if room is BossArena:
+			room.boss_started.connect(boss_started.emit)
 		if room is DefenseRoom:
 			has_defense = true
 			room.defense_started.connect(defense_started.emit)
@@ -363,8 +430,58 @@ func _instantiate(plan: Array) -> void:
 				door.prompt.text = "[E] Go to: %s" % REGIONS[target_region].name
 				door.entered.connect(func() -> void: level_exit_entered.emit(target_region))
 				exit_markers.append({"position": door.global_position, "region": REGIONS[target_region].name})
+			RoomTemplate.RoomType.BOSS:
+				var next_region: int = _pick_exit_regions(1)[0]
+				var door: ExitDoor = EXIT_DOOR.instantiate()
+				door.position = (room.get_node("LevelExit") as Marker2D).position
+				room.add_child(door)
+				door.set_locked(true)
+				door.prompt.text = "Sealed - defeat the boss"
+				door.set_meta("region_name", REGIONS[next_region].name)
+				door.entered.connect(func() -> void: level_exit_entered.emit(next_region))
+				(room as BossArena).exit_door = door
+				exit_markers.append({"position": door.global_position, "region": REGIONS[next_region].name})
 	for room in rooms:
 		room.populate(level_index, _rng)
+	_place_upgrade_scrolls()
+
+
+## 2-3 scrolls of power per level, on random ground spots in normal rooms (Dead Cells style).
+func _place_upgrade_scrolls() -> void:
+	var spots: Array = []
+	for room in rooms:
+		if room.room_type != RoomTemplate.RoomType.NORMAL:
+			continue
+		for m in room.get_markers("ItemSpawns") + room.get_markers("EnemySpawns"):
+			if not (m is EnemySpawn and m.kind == EnemySpawn.Kind.AIR):
+				spots.append([room, m.position])
+	_shuffle(spots)
+	var count := 0 if boss_stage else _rng.randi_range(2, 3)
+	for i in mini(count, spots.size()):
+		var scroll: UpgradeScroll = SCROLL_SCENE.instantiate()
+		scroll.upgrade = GameState.UPGRADE_TYPES[_rng.randi_range(0, GameState.UPGRADE_TYPES.size() - 1)]
+		scroll.position = spots[i][1] + Vector2(10, 0)
+		spots[i][0].add_child(scroll)
+
+
+## Bars across the doorway of a locked treasure room (inside the room, in its connected exit).
+func _add_gate(room: RoomTemplate, entry: Dictionary) -> void:
+	var exits := room.get_exits()
+	for i in exits.size():
+		if not entry.used.has(i):
+			continue
+		var cells := exits[i].opening_cells(room.size_tiles)
+		var rect := Rect2(Vector2(cells[0] * TILE), Vector2.ZERO)
+		for c in cells:
+			rect = rect.expand(Vector2(c * TILE)).expand(Vector2((c + Vector2i.ONE) * TILE))
+		var gate: LockedGate = GATE_SCENE.instantiate()
+		gate.lock_type = entry.lock
+		gate.cost = GameState.vault_coin_cost()
+		gate.gate_size = rect.size
+		gate.position = rect.get_center()
+		room.add_child(gate)
+		room.gate = gate
+		return
 
 
 ## Builds a corridor room in code: 2-tile border, floor that steps up/down to match both exits.

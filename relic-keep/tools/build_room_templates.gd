@@ -3,11 +3,19 @@ extends Node
 ##   godot --headless --path . res://tools/build_room_templates.tscn
 ## You don't need this for your own rooms - paint those in the editor (see README).
 ## Layout legend: # ground, = one-way platform, . air, P player spawn, X level exit, R relic,
-## E ground enemy spawn, F air enemy spawn, I item spawn. Holes in the 2-tile border become exits.
+## E ground enemy spawn, F air enemy spawn, I item spawn, S shop slot, M merchant, B boss spawn.
+## Holes in the 2-tile border become exits.
 
 const TILE := 16
 const OUT_DIR := "res://scenes/rooms/templates/"
-const TYPES := {"NORMAL": 0, "START": 1, "END": 2, "DEFENSE": 3, "BRANCH": 4}
+const TYPES := {"NORMAL": 0, "START": 1, "END": 2, "DEFENSE": 3, "BRANCH": 4, "SHOP": 5, "MINIBOSS": 6, "BOSS": 7}
+const SCRIPTS := {
+	"room_template": "res://scripts/level/room_template.gd",
+	"defense_room": "res://scripts/rooms/defense_room.gd",
+	"shop_room": "res://scripts/rooms/shop_room.gd",
+	"boss_arena": "res://scripts/rooms/boss_arena.gd",
+}
+const BOSSES := {"MINIBOSS": "res://scenes/enemies/warden.tscn", "BOSS": "res://scenes/enemies/keeper.tscn"}
 
 
 func _ready() -> void:
@@ -19,11 +27,13 @@ func _ready() -> void:
 		var w: int = rows[0].length()
 		var root := Node2D.new()
 		root.name = _pascal(layout.name)
-		root.set_script(load("res://scripts/%s.gd" % ("rooms/defense_room" if layout.script == "defense_room" else "level/room_template")))
+		root.set_script(load(SCRIPTS[layout.script]))
 		root.size_tiles = Vector2i(w, h)
 		root.room_type = TYPES[layout.type]
 		root.weight = layout.weight
 		root.min_level = int(layout.min_level)
+		if BOSSES.has(layout.type):
+			root.boss_scene = load(BOSSES[layout.type])
 
 		var tiles := TileMapLayer.new()
 		tiles.name = "Tiles"
@@ -32,6 +42,7 @@ func _ready() -> void:
 		var exits := _add(root, _node2d("Exits"))
 		var enemy_spawns := _add(root, _node2d("EnemySpawns"))
 		var item_spawns := _add(root, _node2d("ItemSpawns"))
+		var shop_slots: Node2D = null
 
 		for y in h:
 			for x in w:
@@ -43,8 +54,15 @@ func _ready() -> void:
 						tiles.set_cell(Vector2i(x, y), 0, Vector2i(1, 0) if above_open else Vector2i(0, 0))
 					"=":
 						tiles.set_cell(Vector2i(x, y), 0, Vector2i(2, 0))
-					"P", "X", "R":
-						var names := {"P": "PlayerSpawn", "X": "LevelExit", "R": "RelicSpawn"}
+					"S":
+						if shop_slots == null:
+							shop_slots = _add(root, _node2d("ShopSlots"))
+						var slot := Marker2D.new()
+						slot.name = "Slot%d" % shop_slots.get_child_count()
+						slot.position = feet
+						_add(shop_slots, slot)
+					"P", "X", "R", "M", "B":
+						var names := {"P": "PlayerSpawn", "X": "LevelExit", "R": "RelicSpawn", "M": "Merchant", "B": "BossSpawn"}
 						var mk := Marker2D.new()
 						mk.name = names[c]
 						mk.position = feet

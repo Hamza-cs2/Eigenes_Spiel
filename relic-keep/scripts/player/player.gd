@@ -1,8 +1,11 @@
 class_name Player
 extends CharacterBody2D
 ## Player: run, variable jump, coyote time, jump buffer, air jumps (items), dash with i-frames,
-## 3-hit combo attack (each swing goes where you're holding), ground slam (tap down in the air,
-## falls through platforms but lands on ledges/ground), drop through platforms AND ledges (down + jump),
+## 3-hit combo attack (each swing goes where you're holding, with a bit of aim assist up/down),
+## ground slam (tap down when you're at least SLAM_MIN_HEIGHT above the ground below you - higher than a
+## normal jump, so it works when jumping/falling off ledges but not when hopping on flat ground;
+## hits enemies on the way down, falls through platforms but lands on
+## ledges/ground, shockwave on impact), drop through platforms AND ledges (down + jump),
 ## knockback + i-frames when hit.
 
 signal died
@@ -40,6 +43,26 @@ const SLAM_SPEED := 620.0
 const SLAM_DAMAGE_MULT := 2.0
 const SLAM_KNOCKBACK := 220.0
 const SLAM_ACTIVE_TIME := 0.12
+## The slam only works when the ground (or ledge) below you is at least this far down (pixels).
+## A normal jump reaches ~60 px, so 72 px = 4.5 tiles means: no slam from a jump on flat ground.
+const SLAM_MIN_HEIGHT := 72.0
+## What counts as "ground" for the slam height: World (1) + Ledges (8). Platforms don't count,
+## because the slam falls through them anyway.
+const SLAM_GROUND_MASK := 1 | 128
+## Damage multiplier for enemies you hit while still falling (the landing shockwave is SLAM_DAMAGE_MULT).
+const SLAM_FALL_DAMAGE_MULT := 1.0
+const SLAM_FALL_KNOCKBACK := 150.0
+
+## Aim assist: enemies inside this box (relative to your chest, in front of you) pull the swing
+## up/down toward them. x = how far in front, y = how far above (negative) / below (positive).
+const AIM_ASSIST_RANGE_X := 48.0
+const AIM_ASSIST_UP := 48.0
+const AIM_ASSIST_DOWN := 20.0
+## Max the swing gets shifted up / down (pixels).
+const AIM_MAX_UP := 30.0
+const AIM_MAX_DOWN := 14.0
+## Without direction keys, the swing may also turn around to an enemy this close behind you.
+const AIM_TURN_RANGE := 28.0
 
 @onready var sprite: Sprite2D = $Sprite
 @onready var attack_pivot: Node2D = $AttackPivot
@@ -53,6 +76,7 @@ const SLAM_ACTIVE_TIME := 0.12
 @onready var dash_cooldown_timer: Timer = $DashCooldownTimer
 @onready var invincible_timer: Timer = $InvincibleTimer
 @onready var slam_hitbox: Hitbox = $SlamHitbox
+@onready var slam_fall_hitbox: Hitbox = $SlamFallHitbox
 @onready var slam_dust: CPUParticles2D = $SlamDust
 
 var facing := 1
@@ -79,6 +103,8 @@ func _ready() -> void:
 	hitbox.hit_landed.connect(_on_hit_landed)
 	slam_hitbox.source = self
 	slam_hitbox.hit_landed.connect(_on_slam_hit_landed)
+	slam_fall_hitbox.source = self
+	slam_fall_hitbox.hit_landed.connect(_on_slam_fall_hit)
 	hurtbox.hurt.connect(_on_hurt)
 	dash_timer.timeout.connect(_end_dash)
 	slash.visible = false
@@ -135,7 +161,7 @@ func _physics_process(delta: float) -> void:
 		_request_attack()
 
 	move_and_slide()
-	if is_slamming and is_on_floor():
+	if is_on_floor() and is_slamming:
 		_land_slam()
 	_update_visuals(delta)
 
@@ -191,12 +217,29 @@ func _end_dash() -> void:
 
 # ---------------------------------------------------------------- ground slam
 
-## Tap "move_down" while in the air -> slam straight down (through one-way platforms).
+## Tap "move_down" while falling -> slam straight down (through one-way platforms).
 func _check_slam_input(on_floor: bool) -> void:
 	if input_locked or on_floor or is_dashing or is_slamming:
 		return
-	if Input.is_action_just_pressed("move_down"):
+	if Input.is_action_just_pressed("move_down") and can_slam():
 		_start_slam()
+
+
+## Height based: you must be high enough above the ground below you.
+func can_slam() -> bool:
+	return height_above_ground() >= SLAM_MIN_HEIGHT
+
+
+## Distance from your feet down to the next solid ground or ledge (INF if there is none).
+func height_above_ground() -> float:
+	var best := INF
+	for x in [-4.0, 4.0]:
+		var from := global_position + Vector2(x, -1)
+		var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(0, 1000), SLAM_GROUND_MASK)
+		var hit := get_world_2d().direct_space_state.intersect_ray(query)
+		if not hit.is_empty():
+			best = minf(best, hit.position.y - global_position.y)
+	return best
 
 
 func _start_slam() -> void:
@@ -208,12 +251,22 @@ func _start_slam() -> void:
 	combo_index = 0
 	hitbox.set_active(false)
 	slash.visible = false
+	_reset_aim()
 	sprite.modulate = Color(1.5, 1.2, 0.7)
 	_squash(Vector2(0.7, 1.3))
+	# Hit everything we fall through.
+	var fall_dmg := GameState.get_stat("damage") * SLAM_FALL_DAMAGE_MULT
+	slam_fall_hitbox.is_crit = randf() < GameState.get_stat("crit_chance")
+	if slam_fall_hitbox.is_crit:
+		fall_dmg *= 2.0
+	slam_fall_hitbox.damage = roundi(fall_dmg)
+	slam_fall_hitbox.knockback = SLAM_FALL_KNOCKBACK
+	slam_fall_hitbox.set_active(true)
 
 
 func _land_slam() -> void:
 	is_slamming = false
+	slam_fall_hitbox.set_active(false)
 	set_collision_mask_value(7, true)
 	sprite.modulate = Color.WHITE
 	var dmg := GameState.get_stat("damage") * SLAM_DAMAGE_MULT
@@ -234,6 +287,12 @@ func _land_slam() -> void:
 func _on_slam_hit_landed(_hurtbox: Hurtbox) -> void:
 	GameState.on_player_dealt_damage(slam_hitbox.damage)
 	GameState.hitstop(0.06)
+
+
+func _on_slam_fall_hit(_hurtbox: Hurtbox) -> void:
+	GameState.on_player_dealt_damage(slam_fall_hitbox.damage)
+	shake(2.0)
+	GameState.hitstop(0.03)
 
 
 # ---------------------------------------------------------------- attacking
@@ -260,6 +319,7 @@ func _swing() -> void:
 	await get_tree().create_timer(SWING_WINDUP / spd, false).timeout
 	if dead or my_id != _swing_id:
 		return
+	_apply_aim_assist(dir)
 	var dmg: float = GameState.get_stat("damage") * COMBO_DAMAGE[combo_index]
 	hitbox.is_crit = randf() < GameState.get_stat("crit_chance")
 	if hitbox.is_crit:
@@ -274,6 +334,7 @@ func _swing() -> void:
 	await get_tree().create_timer(SWING_ACTIVE / spd, false).timeout
 	hitbox.set_active(false)
 	slash.visible = false
+	_reset_aim()
 	if dead or my_id != _swing_id:
 		return
 
@@ -286,6 +347,45 @@ func _swing() -> void:
 	else:
 		combo_index = 0
 		attacking = false
+
+
+## Shifts (and tilts) the swing up or down toward the closest enemy in front of you, so enemies
+## slightly above you (on a step, a platform, flying) still get hit. Only nudges: enemies far
+## above/below are ignored.
+func _apply_aim_assist(dir: float) -> void:
+	var chest := global_position + Vector2(0, -10)
+	var best: Enemy = null
+	var best_d := Vector2.ZERO
+	var best_score := INF
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Enemy
+		if e == null or e.dead:
+			continue
+		var d := e.global_position + Vector2(0, -10 if e.uses_gravity else 0) - chest
+		if d.y < -AIM_ASSIST_UP or d.y > AIM_ASSIST_DOWN or absf(d.x) > AIM_ASSIST_RANGE_X:
+			continue
+		var in_front := signf(d.x) == facing or absf(d.x) < 4.0
+		if not in_front:
+			# Turn around only for very close enemies, and never against the direction you're holding.
+			if dir != 0.0 or absf(d.x) > AIM_TURN_RANGE:
+				continue
+		var score := d.length() + (0.0 if in_front else 24.0)
+		if score < best_score:
+			best_score = score
+			best = e
+			best_d = d
+	if best == null:
+		return
+	if signf(best_d.x) != facing and absf(best_d.x) >= 4.0:
+		facing = 1 if best_d.x > 0.0 else -1
+		attack_pivot.scale.x = facing
+	attack_pivot.position.y = clampf(best_d.y, -AIM_MAX_UP, AIM_MAX_DOWN)
+	slash.rotation = clampf(atan2(best_d.y, maxf(absf(best_d.x), 12.0)), -0.7, 0.4)
+
+
+func _reset_aim() -> void:
+	attack_pivot.position.y = 0.0
+	slash.rotation = 0.0
 
 
 func _on_hit_landed(_hurtbox: Hurtbox) -> void:
@@ -317,6 +417,7 @@ func _on_hurt(hb: Hitbox) -> void:
 func _die() -> void:
 	dead = true
 	hitbox.set_active(false)
+	slam_fall_hitbox.set_active(false)
 	slash.visible = false
 	hurtbox.invincible = true
 	velocity = Vector2.ZERO
@@ -333,6 +434,7 @@ func teleport(pos: Vector2, bounds: Rect2) -> void:
 	velocity = Vector2.ZERO
 	is_dashing = false
 	is_slamming = false
+	slam_fall_hitbox.set_active(false)
 	_drop_timer = 0.0
 	set_collision_mask_value(7, true)
 	set_collision_mask_value(8, true)

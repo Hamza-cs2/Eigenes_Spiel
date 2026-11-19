@@ -8,6 +8,7 @@ extends CharacterBody2D
 ## Subclasses override _ai(delta) (chasing/attacking) and optionally _patrol(delta) and _interrupt().
 
 signal died(enemy: Enemy)
+signal health_changed(hp: int, max_hp: int)
 
 const GRAVITY := 900.0
 const WORLD_MASK := 1 # layer 1: blocks line of sight
@@ -38,6 +39,10 @@ const HEALTH_ORB := preload("res://scenes/items/health_orb.tscn")
 @export var uses_gravity := true
 @export_range(0.0, 1.0) var health_orb_chance := 0.15
 @export var health_bar_offset := -26.0
+@export_group("Loot")
+## Coins dropped on death (random between x and y).
+@export var coin_drop := Vector2i(2, 4)
+@export_range(0.0, 1.0) var key_drop_chance := 0.03
 
 var hp := 0
 var target: Node2D = null
@@ -192,6 +197,7 @@ func _on_hurt(hb: Hitbox) -> void:
 		stun_time = 0.25 * push
 		_interrupt()
 	queue_redraw()
+	health_changed.emit(maxi(hp, 0), max_hp)
 	if hp <= 0:
 		_die()
 
@@ -207,6 +213,11 @@ func _die() -> void:
 		var orb := HEALTH_ORB.instantiate()
 		orb.position = position + Vector2(0, -8)
 		get_parent().call_deferred("add_child", orb)
+	var coins := randi_range(coin_drop.x, coin_drop.y)
+	if coins > 0:
+		LootPickup.spawn_coins(get_parent(), position + Vector2(0, -12), coins)
+	if randf() < key_drop_chance:
+		LootPickup.spawn_key(get_parent(), position + Vector2(0, -12))
 	died.emit(self)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate", Color(1, 1, 1, 0), 0.25)

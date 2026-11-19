@@ -16,6 +16,9 @@ size = Vector2(26, 20)
 [sub_resource type="RectangleShape2D" id="SlamShape"]
 size = Vector2(64, 22)
 
+[sub_resource type="RectangleShape2D" id="SlamFallShape"]
+size = Vector2(20, 26)
+
 [sub_resource type="RectangleShape2D" id="HurtShape"]
 size = Vector2(10, 18)
 
@@ -52,6 +55,13 @@ collision_layer = 8
 [node name="CollisionShape2D" parent="SlamHitbox" index="0"]
 position = Vector2(0, -9)
 shape = SubResource("SlamShape")
+
+[node name="SlamFallHitbox" parent="." instance=ExtResource("3_hb")]
+collision_layer = 8
+
+[node name="CollisionShape2D" parent="SlamFallHitbox" index="0"]
+position = Vector2(0, -8)
+shape = SubResource("SlamFallShape")
 
 [node name="SlamDust" type="CPUParticles2D" parent="."]
 emitting = false
@@ -106,3 +116,4 @@ one_shot = true
 [editable path="AttackPivot/Hitbox"]
 [editable path="Hurtbox"]
 [editable path="SlamHitbox"]
+[editable path="SlamFallHitbox"]

@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/items/upgrade_scroll.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/item.png" id="2_t"]
+
+[sub_resource type="RectangleShape2D" id="Shape"]
+size = Vector2(18, 24)
+
+[node name="UpgradeScroll" type="Area2D"]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_s")
+
+[node name="Icon" type="Sprite2D" parent="."]
+modulate = Color(0.75, 0.45, 1, 1)
+position = Vector2(0, -12)
+texture = ExtResource("2_t")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -12)
+shape = SubResource("Shape")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -50.0
+offset_top = -36.0
+offset_right = 50.0
+offset_bottom = -24.0
+theme_override_colors/font_color = Color(0.85, 0.7, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1

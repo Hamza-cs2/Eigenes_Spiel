@@ -46,5 +46,5 @@ offset_top = 342.0
 offset_right = 632.0
 offset_bottom = 358.0
 theme_override_font_sizes/font_size = 8
-text = "M / Tab: close      red dot: you      yellow: exits      purple: relic room"
+text = "M / Tab: close    red dot: you    yellow: exits    purple: relic    green: shop    red: boss    gold: locked"
 horizontal_alignment = 2

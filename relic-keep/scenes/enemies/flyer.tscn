@@ -29,6 +29,7 @@ uses_gravity = false
 health_bar_offset = -14.0
 vertical_aggro = 120.0
 patrol_radius = 60.0
+coin_drop = Vector2i(1, 3)
 
 [node name="Sprite" type="Sprite2D" parent="."]
 texture = ExtResource("2_t")

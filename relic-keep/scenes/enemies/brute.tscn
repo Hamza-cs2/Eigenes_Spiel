@@ -36,6 +36,8 @@ jump_velocity = -280.0
 vertical_aggro = 80.0
 patrol_radius = 70.0
 patrol_speed_mult = 0.5
+coin_drop = Vector2i(7, 12)
+key_drop_chance = 0.1
 
 [node name="Sprite" type="Sprite2D" parent="."]
 position = Vector2(0, -13.0)

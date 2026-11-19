@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/items/merchant.gd" id="1_s"]
+[ext_resource type="Texture2D" path="res://assets/sprites/merchant.png" id="2_t"]
+
+[sub_resource type="RectangleShape2D" id="Near"]
+size = Vector2(120, 48)
+
+[node name="Merchant" type="Node2D"]
+script = ExtResource("1_s")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -12)
+texture = ExtResource("2_t")
+
+[node name="Area" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area"]
+position = Vector2(0, -20)
+shape = SubResource("Near")
+
+[node name="Speech" type="Label" parent="."]
+z_index = 20
+offset_left = -80.0
+offset_top = -44.0
+offset_right = 80.0
+offset_bottom = -30.0
+theme_override_colors/font_color = Color(0.85, 1, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1

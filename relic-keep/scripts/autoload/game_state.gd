@@ -5,6 +5,9 @@ extends Node
 signal hp_changed(hp: int, max_hp: int)
 signal items_changed
 signal item_picked_up(item: ItemData)
+signal coins_changed(coins: int)
+signal upgrades_changed
+signal keys_changed(keys: int)
 
 const SAVE_PATH := "user://save.cfg"
 const DAMAGE_NUMBER := preload("res://scenes/ui/damage_number.tscn")
@@ -47,7 +50,18 @@ var kills := 0
 var defenses_won := 0
 var defenses_lost := 0
 var hp := 100
+## Equipped relics (max MAX_RELICS). Only these give stats.
 var items: Array[ItemData] = []
+const MAX_RELICS := 3
+## One spare relic (gives no stats).
+var backpack: ItemData = null
+## Permanent upgrades from scrolls this run: stat -> bonus.
+var upgrades := {}
+var upgrade_count := 0
+## Lost when you die (permadeath).
+var coins := 0
+var keys := 0
+var coins_collected := 0
 var rng := RandomNumberGenerator.new()
 var last_run := {}
 
@@ -84,11 +98,19 @@ func start_new_run() -> void:
 	defenses_won = 0
 	defenses_lost = 0
 	items.clear()
+	backpack = null
+	upgrades.clear()
+	upgrade_count = 0
+	coins = 0
+	keys = 0
+	coins_collected = 0
 	_lifesteal_acc = 0.0
 	rng.randomize()
 	hp = get_max_hp()
 	items_changed.emit()
 	hp_changed.emit(hp, get_max_hp())
+	coins_changed.emit(coins)
+	keys_changed.emit(keys)
 
 
 func end_run() -> void:
@@ -104,6 +126,7 @@ func end_run() -> void:
 		"defenses_won": defenses_won,
 		"defenses_lost": defenses_lost,
 		"items": items.size(),
+		"coins": coins_collected,
 		"new_best": new_best,
 	}
 	_save()
@@ -115,6 +138,7 @@ func get_stat(stat: String) -> float:
 	var value: float = BASE_STATS.get(stat, 0.0)
 	for item in items:
 		value += float(item.stats.get(stat, 0.0))
+	value += float(upgrades.get(stat, 0.0))
 	match stat:
 		"max_hp":
 			value = maxf(value, 30.0)
@@ -135,7 +159,19 @@ func get_max_hp() -> int:
 	return roundi(get_stat("max_hp"))
 
 
-func add_item(item: ItemData) -> void:
+func can_take_item() -> bool:
+	return items.size() < MAX_RELICS or backpack == null
+
+
+## Equips the relic, or puts it in the backpack. Returns false if both are full.
+func add_item(item: ItemData) -> bool:
+	if items.size() >= MAX_RELICS:
+		if backpack != null:
+			return false
+		backpack = item
+		items_changed.emit()
+		item_picked_up.emit(item)
+		return true
 	items.append(item)
 	var hp_bonus := int(item.stats.get("max_hp", 0))
 	if hp_bonus > 0:
@@ -143,6 +179,59 @@ func add_item(item: ItemData) -> void:
 	hp = clampi(hp + item.heal, 1, get_max_hp())
 	items_changed.emit()
 	item_picked_up.emit(item)
+	hp_changed.emit(hp, get_max_hp())
+	return true
+
+
+## Removes an equipped relic (index) or the backpack relic (index -1) and returns it.
+func remove_item(index: int) -> ItemData:
+	var item: ItemData
+	if index < 0:
+		item = backpack
+		backpack = null
+	else:
+		item = items[index]
+		items.remove_at(index)
+	hp = clampi(hp, 1, get_max_hp())
+	items_changed.emit()
+	hp_changed.emit(hp, get_max_hp())
+	return item
+
+
+## Swaps the backpack relic with an equipped one (or just equips it if there's room).
+func swap_backpack(index: int) -> void:
+	if backpack == null:
+		return
+	var b := backpack
+	backpack = null
+	if index >= 0 and index < items.size():
+		backpack = items[index]
+		items[index] = b
+	else:
+		items.append(b)
+	hp = clampi(hp, 1, get_max_hp())
+	items_changed.emit()
+	hp_changed.emit(hp, get_max_hp())
+
+
+const UPGRADE_TYPES := [
+	{"stat": "max_hp", "amount": 15.0, "text": "+15 max HP"},
+	{"stat": "damage", "amount": 2.0, "text": "+2 damage"},
+	{"stat": "attack_speed", "amount": 0.06, "text": "+6% attack speed"},
+	{"stat": "crit_chance", "amount": 0.03, "text": "+3% crit chance"},
+	{"stat": "armor", "amount": 0.03, "text": "+3% armor"},
+	{"stat": "move_speed", "amount": 0.05, "text": "+5% move speed"},
+]
+
+
+## Scroll of power: permanent for this run.
+func add_upgrade(upgrade: Dictionary) -> void:
+	upgrades[upgrade.stat] = float(upgrades.get(upgrade.stat, 0.0)) + upgrade.amount
+	upgrade_count += 1
+	if upgrade.stat == "max_hp":
+		hp += int(upgrade.amount)
+	hp = clampi(hp, 1, get_max_hp())
+	upgrades_changed.emit()
 	hp_changed.emit(hp, get_max_hp())
 
 
@@ -162,6 +251,46 @@ func should_spawn_defense() -> bool:
 	if depth < 2:
 		return false
 	return levels_since_defense >= 2 or rng.randf() < 0.4
+
+
+# ---------------------------------------------------------------- coins & keys
+
+func add_coins(amount: int) -> void:
+	coins += amount
+	coins_collected += amount
+	coins_changed.emit(coins)
+
+
+## Returns false (and spends nothing) if you can't afford it.
+func spend_coins(amount: int) -> bool:
+	if coins < amount:
+		return false
+	coins -= amount
+	coins_changed.emit(coins)
+	return true
+
+
+func add_key() -> void:
+	keys += 1
+	keys_changed.emit(keys)
+
+
+func use_key() -> bool:
+	if keys <= 0:
+		return false
+	keys -= 1
+	keys_changed.emit(keys)
+	return true
+
+
+## Prices scale with the level.
+func price_for(rarity: ItemData.Rarity) -> int:
+	var base: int = [60, 140, 300][rarity]
+	return roundi(base * (1.0 + 0.15 * maxi(depth - 1, 0)) / 5.0) * 5
+
+
+func vault_coin_cost() -> int:
+	return 100 + 25 * maxi(depth - 1, 0)
 
 
 # ---------------------------------------------------------------- health

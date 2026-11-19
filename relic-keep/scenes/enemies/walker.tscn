@@ -29,6 +29,7 @@ windup = 0.45
 lunge = 80.0
 aggro_range = 130.0
 patrol_radius = 90.0
+coin_drop = Vector2i(2, 4)
 
 [node name="Sprite" type="Sprite2D" parent="."]
 position = Vector2(0, -9.0)

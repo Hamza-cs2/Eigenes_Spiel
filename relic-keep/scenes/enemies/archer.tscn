@@ -24,6 +24,7 @@ attack_cooldown = 2.0
 vertical_aggro = 90.0
 lose_aggro_range = 300.0
 patrol_radius = 70.0
+coin_drop = Vector2i(3, 5)
 
 [node name="Sprite" type="Sprite2D" parent="."]
 position = Vector2(0, -9)
